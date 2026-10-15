@@ -30,22 +30,41 @@ export async function ensureBucket(): Promise<void> {
 }
 
 export async function putText(key: string, body: string): Promise<void> {
+  await putBytes(key, Buffer.from(body), "text/plain");
+}
+
+export async function putBytes(
+  key: string,
+  body: Uint8Array,
+  contentType: string,
+): Promise<void> {
   await ensureBucket();
   await s3.send(
     new PutObjectCommand({
       Bucket: uploadBucket,
       Key: key,
       Body: body,
-      ContentType: "text/plain",
+      ContentType: contentType,
     }),
   );
 }
 
 export async function getText(key: string): Promise<string> {
+  const file = await getBytes(key);
+  return new TextDecoder().decode(file.body);
+}
+
+export async function getBytes(
+  key: string,
+): Promise<{ body: Uint8Array; contentType: string }> {
   const response = await s3.send(
     new GetObjectCommand({ Bucket: uploadBucket, Key: key }),
   );
-  return (await response.Body?.transformToString()) ?? "";
+  const body = (await response.Body?.transformToByteArray()) ?? new Uint8Array();
+  return {
+    body,
+    contentType: response.ContentType ?? "application/octet-stream",
+  };
 }
 
 export async function signedGet(key: string): Promise<string> {

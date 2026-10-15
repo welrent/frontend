@@ -86,7 +86,7 @@ State is Riverpod. Routing is `go_router` with path URLs.
 - Trustpilot is the green word plus stars. The CDN wordmark SVG was not shipped in the repo.
 - App Store and Google Play badges explain that no store URL exists.
 - Yacht assistance and concierge dialogs say there is no API. The Next.js buttons did not call one.
-- Avatar pick is a local data URL (5 MB cap). Firebase Storage resumable upload is not implemented.
+- Avatar pick uploads to Neon Object Storage through `POST /api/photos` when `API_BASE_URL` is set (5 MB cap). Without that URL the photo stays a local data URL. Firebase Storage resumable upload is not implemented.
 - Profile bio is stored locally and, when a Firebase project id and ID token exist, also patched to Firestore.
 - PHP registration has no register endpoint, so it signs in and keeps the chosen name on this device. The PHP login accepts any non-empty email and password and returns a token.
 - Password reset only works with `FIREBASE_API_KEY`.

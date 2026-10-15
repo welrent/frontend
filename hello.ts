@@ -3,7 +3,7 @@ import { cors } from "hono/cors";
 
 import { ensureSchema, pool } from "./src/db.js";
 import { complete, listModels } from "./src/gateway.js";
-import { getText, putText, signedGet } from "./src/storage.js";
+import { getBytes, getText, putBytes, putText, signedGet } from "./src/storage.js";
 
 const app = new Hono();
 
@@ -183,6 +183,43 @@ app.get("/api/storage", async (c) => {
   if (!key) return c.json({ error: "key required" }, 400);
   const body = await getText(key);
   return c.json({ key, body });
+});
+
+app.post("/api/photos", async (c) => {
+  const body = await c.req.json<{ contentType?: string; data?: string }>();
+  if (!body.data) return c.json({ error: "data is required" }, 400);
+  const contentType = body.contentType ?? "image/jpeg";
+  if (!contentType.startsWith("image/")) {
+    return c.json({ error: "Only images are accepted" }, 400);
+  }
+  const bytes = Buffer.from(body.data, "base64");
+  if (bytes.length === 0) return c.json({ error: "Photo was empty" }, 400);
+  if (bytes.length > 5 * 1024 * 1024) {
+    return c.json({ error: "Photo must be under 5 MB." }, 400);
+  }
+  const ext = contentType.split("/")[1]?.split("+")[0]?.replace("jpeg", "jpg") ?? "jpg";
+  const key = `photos/${crypto.randomUUID()}.${ext}`;
+  await putBytes(key, bytes, contentType);
+  const origin = new URL(c.req.url).origin;
+  return c.json({
+    key,
+    url: `${origin}/api/photos?key=${encodeURIComponent(key)}`,
+    contentType,
+    bytes: bytes.length,
+  });
+});
+
+app.get("/api/photos", async (c) => {
+  const key = c.req.query("key") ?? "";
+  if (!key.startsWith("photos/")) return c.json({ error: "key required" }, 400);
+  const file = await getBytes(key);
+  return new Response(Buffer.from(file.body), {
+    status: 200,
+    headers: {
+      "Content-Type": file.contentType,
+      "Cache-Control": "private, max-age=3600",
+    },
+  });
 });
 
 export default app;

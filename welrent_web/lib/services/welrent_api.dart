@@ -145,6 +145,31 @@ class WelrentApi {
         .toList();
   }
 
+  Future<String> uploadPhoto({
+    required List<int> bytes,
+    required String contentType,
+  }) async {
+    if (!config.hasApi) {
+      throw ApiException(
+        'API_BASE_URL is not set, so this photo cannot be stored.',
+      );
+    }
+    final response = await _client.post(
+      Uri.parse('${config.normalizedApiBase}/api/photos'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'contentType': contentType,
+        'data': base64Encode(bytes),
+      }),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw ApiException('Photo upload failed (${response.statusCode}).');
+    }
+    final data = jsonDecode(response.body);
+    if (data is Map && data['url'] != null) return '${data['url']}';
+    throw ApiException('Photo upload did not return a URL.');
+  }
+
   Future<String> createRental({
     required String uid,
     required String carName,

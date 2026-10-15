@@ -134,8 +134,26 @@ class _AccountBodyState extends ConsumerState<_AccountBody> {
       return;
     }
     final mime = _mime(file.extension);
-    final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
-    await ref.read(authControllerProvider.notifier).updatePhoto(dataUrl);
+    final config = ref.read(appConfigProvider);
+    if (!config.hasApi) {
+      final dataUrl = 'data:$mime;base64,${base64Encode(bytes)}';
+      await ref.read(authControllerProvider.notifier).updatePhoto(dataUrl);
+      if (mounted) {
+        setState(() {
+          _uploadError =
+              'API_BASE_URL is not set, so this photo stayed on this device.';
+        });
+      }
+      return;
+    }
+    try {
+      final url = await ref
+          .read(apiProvider)
+          .uploadPhoto(bytes: bytes, contentType: mime);
+      await ref.read(authControllerProvider.notifier).updatePhoto(url);
+    } catch (error) {
+      if (mounted) setState(() => _uploadError = '$error');
+    }
   }
 
   String _mime(String? extension) {
